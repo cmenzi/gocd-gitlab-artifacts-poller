@@ -1,21 +1,5 @@
 language: java
-sudo: required
-before_install: 
-- cat /etc/hosts # optionally check the content *before*
-- sudo hostname "$(hostname | cut -c1-63)"
-- sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts | sudo tee /etc/hosts
-- cat /etc/hosts # optionally check the content *after*
-- ant init-ivy
-script: ant all
 jdk:
-- oraclejdk8
-deploy:
-  provider: releases
-  api_key:
-    secure: G28DY2H96vg0QHNyy5YNFGcajCKiLumhZYRaeDk3yr4TOHUgWoixnCz9W1Z5GR0jhv1/Wgul9o3LDPl437B6Mc0IVruX5pbJLEnGTAuwuZdRGXkSp9uh9X3FKy1OWM9A/pxGAvi8ub5XS3MZKbMWm2HHW8d22vOoHUKdLgLxIfg=
-  file: dist/go-generic-artifactory-poller.jar
-  skip_cleanup: true
-  on:
-    repo: varchev/go-generic-artifactory-poller
-    tags: true
-    all_branches: true
+  - oraclejdk7
+  - oraclejdk8
+
