@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<go-plugin id="gocd-gitlab-artifacts-poller" version="1.0">
+    <about>
+        <name>GitLab Artifact Poller</name>
+        <version>1.0.0</version>
+        <target-go-version>17.8</target-go-version>
+        <description></description>
+        <vendor>
+            <name>Cédric Menzi</name>
+            <url>https://github.com/cmenzi/gocd-gitlab-artifacts-poller/</url>
+        </vendor></url>
+        </vendor>
+        <target-os>
+            <value>Linux</value>
+            <value>Windows</value>
+        </target-os>
+    </about>
+</go-plugin>
