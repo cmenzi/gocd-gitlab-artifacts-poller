@@ -1,4 +1,4 @@
-package com.buhlergroup.devops.gocd.message;
+package ch.crip.gocd.message;
 import com.google.gson.annotations.Expose;
 
 public class ValidationError {

@@ -1,4 +1,4 @@
-package com.buhlergroup.devops.gocd;
+package ch.crip.gocd;
 
 import com.google.gson.GsonBuilder;
 

@@ -1,4 +1,4 @@
-package com.buhlergroup.devops.gocd.message;
+package ch.crip.gocd.message;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
