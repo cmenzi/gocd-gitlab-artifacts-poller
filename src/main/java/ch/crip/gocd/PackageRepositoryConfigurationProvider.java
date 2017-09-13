@@ -16,9 +16,7 @@ public class PackageRepositoryConfigurationProvider {
 	public PackageMaterialProperties packageConfiguration() {
 		PackageMaterialProperties packageConfigurationResponse = new PackageMaterialProperties();
 		packageConfigurationResponse.addPackageMaterialProperty(Constants.PROJECT_ID, projectId());
-		packageConfigurationResponse.addPackageMaterialProperty(Constants.JOB_NAME, jobName());
-		packageConfigurationResponse.addPackageMaterialProperty(Constants.ARTIFACT_PATH, artifactPath());
-		packageConfigurationResponse.addPackageMaterialProperty(Constants.ARTIFACT_PATTERN, artifactPattern());
+		packageConfigurationResponse.addPackageMaterialProperty(Constants.BRANCH_NAME, branchName());
 		return packageConfigurationResponse;
 	}
 
@@ -33,7 +31,10 @@ public class PackageRepositoryConfigurationProvider {
 	}
 	
 	private PackageMaterialProperty url() {
-		return new PackageMaterialProperty().withDisplayName("GitLab Server URL").withDisplayOrder("0");
+		return new PackageMaterialProperty()
+				.withRequired(true)
+				.withDisplayName("GitLab Server URL")
+				.withDisplayOrder("0");
 	}
 
 	private PackageMaterialProperty deployKey() {
@@ -41,39 +42,25 @@ public class PackageRepositoryConfigurationProvider {
 				.withRequired(true)
 				.withPartOfIdentity(false)
 				.withSecure(true)
-				.withDisplayName("Access Token")
+				.withDisplayName("Private Access Token")
 				.withDisplayOrder("1");
 	}
+	
 	
 	private PackageMaterialProperty projectId() {
 		return new PackageMaterialProperty()
 				.withRequired(true)
-				.withDisplayName("Project Id")
+				.withDisplayName("GitLab Project ID")
 				.withDisplayOrder("0");
 	}
-
-	private PackageMaterialProperty jobName() {
+	
+	private PackageMaterialProperty branchName() {
 		return new PackageMaterialProperty()
+				.withSecure(false)
 				.withRequired(false)
 				.withValue("")
-				.withDisplayName("Job Name")
-				.withDisplayOrder("0");
-	}
-	
-	private PackageMaterialProperty artifactPath() {
-		return new PackageMaterialProperty()
-				.withSecure(false)
-				.withRequired(false)
-				.withDisplayName("Artifact Path")
+				.withDisplayName("Branch to include")
 				.withDisplayOrder("1");
-	}
-	
-	private PackageMaterialProperty artifactPattern() {
-		return new PackageMaterialProperty()
-				.withSecure(false)
-				.withRequired(false)
-				.withDisplayName("Artifact Pattern")
-				.withDisplayOrder("2");
 	}
 	
 }

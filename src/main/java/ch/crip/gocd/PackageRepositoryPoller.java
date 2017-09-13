@@ -1,10 +1,8 @@
 package ch.crip.gocd;
 
 import static java.util.Arrays.asList;
-import java.io.File;
-import java.io.FilenameFilter;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+
+import java.util.Date;
 import java.util.List;
 
 import org.gitlab4j.api.GitLabApi;
@@ -12,41 +10,50 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.Constants.JobScope;
 import org.gitlab4j.api.models.ArtifactsFile;
 import org.gitlab4j.api.models.Job;
-import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.Version;
+
+import com.thoughtworks.go.plugin.api.logging.Logger;
 
 import ch.crip.gocd.message.CheckConnectionResultMessage;
 import ch.crip.gocd.message.PackageMaterialProperties;
 import ch.crip.gocd.message.PackageRevisionMessage;
-import net.lingala.zip4j.core.ZipFile;
-import net.lingala.zip4j.exception.ZipException;
+
+import static ch.crip.gocd.JsonUtil.toJsonString;
 
 public class PackageRepositoryPoller {
 
+	private static final Logger LOGGER = Logger.getLoggerFor(PackageRepositoryPoller.class);
+	
 	public PackageRepositoryPoller(PackageRepositoryConfigurationProvider configurationProvider) {
 	}
 
 	public CheckConnectionResultMessage checkConnectionToRepository(PackageMaterialProperties repositoryConfiguration) {
-		GitLabApi gitLabApi = new GitLabApi(repositoryConfiguration.getProperty(Constants.GITLAB_SERVERURL).value(), repositoryConfiguration.getProperty(Constants.ACCESS_TOKEN).value());
 		try {
-			gitLabApi.getVersion();
-			return new CheckConnectionResultMessage(CheckConnectionResultMessage.STATUS.SUCCESS, asList("Connection successful"));
+			LOGGER.info("checkConnectionToRepository: " + toJsonString(repositoryConfiguration));
+			
+			GitLabApi gitLabApi = createGitLabApi(repositoryConfiguration);
+			Version version = gitLabApi.getVersion();
+			
+			LOGGER.info("Connection to GitLab Server: " + version.getVersion());
+
+			return new CheckConnectionResultMessage(CheckConnectionResultMessage.STATUS.SUCCESS, asList("Connection to GitLab Server was successful"));
 		} catch (GitLabApiException e) {
 			return new CheckConnectionResultMessage(CheckConnectionResultMessage.STATUS.FAILURE, asList("Connection error", e.toString()));
 		}
 	}
 
 	public CheckConnectionResultMessage checkConnectionToPackage(PackageMaterialProperties packageConfiguration, PackageMaterialProperties repositoryConfiguration) {
-		GitLabApi gitLabApi = new GitLabApi(repositoryConfiguration.getProperty(Constants.GITLAB_SERVERURL).value(), repositoryConfiguration.getProperty(Constants.ACCESS_TOKEN).value());
 		try {
+			LOGGER.info("checkConnectionToPackage REPO: " + toJsonString(repositoryConfiguration) + "\n PACK: " + toJsonString(repositoryConfiguration));
+			
 			int projectId = Integer.parseInt(packageConfiguration.getProperty(Constants.PROJECT_ID).value());
-			List<Job> jobs = gitLabApi.getJobApi().getJobs(projectId, JobScope.SUCCESS);
-			Job lastestJob = jobs.get(0);
+			GitLabApi gitLabApi = createGitLabApi(repositoryConfiguration);
+			Job lastestJob = getLatestSuccessfulJob(packageConfiguration, gitLabApi, projectId);
 			if (lastestJob == null) {
 				return new CheckConnectionResultMessage(CheckConnectionResultMessage.STATUS.FAILURE, asList("Package not found, because no job exists."));
 			}
 
 			ArtifactsFile artifactsFile = lastestJob.getArtifactsFile();
-
 			if (artifactsFile == null || artifactsFile.getFilename() == null) {
 				return new CheckConnectionResultMessage(CheckConnectionResultMessage.STATUS.FAILURE, asList("Package not found, because artifact does not exits."));
 			}
@@ -58,55 +65,82 @@ public class PackageRepositoryPoller {
 	}
 
 	public PackageRevisionMessage getLatestRevision(PackageMaterialProperties packageConfiguration, PackageMaterialProperties repositoryConfiguration) {
-		String gitlabServerUrl = repositoryConfiguration.getProperty(Constants.GITLAB_SERVERURL).value();
-		GitLabApi gitLabApi = new GitLabApi(gitlabServerUrl, repositoryConfiguration.getProperty(Constants.ACCESS_TOKEN).value());
 		try {
-			int projectId = Integer.parseInt(packageConfiguration.getProperty(Constants.PROJECT_ID).value());
-			Project project = gitLabApi.getProjectApi().getProject(projectId);
-			String artifactPath = packageConfiguration.getProperty(Constants.ARTIFACT_PATH).value();
-			String artifactPattern = packageConfiguration.getProperty(Constants.ARTIFACT_PATTERN).value();
-
-			List<Job> jobs = gitLabApi.getJobApi().getJobs(projectId, JobScope.SUCCESS);
-			Job lastestJob = jobs.get(0);
-
-			File artifactsFile = gitLabApi.getJobApi().downloadArtifactsFile(projectId, lastestJob.getRef(), lastestJob.getName(), null);
-			ZipFile zipFile = new ZipFile(artifactsFile.getAbsolutePath());
-			String parentDir = artifactsFile.getParentFile().getAbsolutePath();
-			String extractDir = parentDir + "./" + artifactsFile.getName() + "-extracted";
 			
-			zipFile.extractAll(extractDir);
-			File file = new File(extractDir);
-			File[] files = file.listFiles(new FilenameFilter() {
-				@Override
-				public boolean accept(File dir, String name) {
-					return name.matches(artifactPattern);
-				}
-			});
+			LOGGER.info("getLatestRevision REPO: " + toJsonString(repositoryConfiguration) + "\n PACK: " + toJsonString(repositoryConfiguration));
+			
+			int projectId = Integer.parseInt(packageConfiguration.getProperty(Constants.PROJECT_ID).value());
+			String branchName = "";
+			if(packageConfiguration.hasKey(Constants.BRANCH_NAME)) {
+				branchName = packageConfiguration.getProperty(Constants.BRANCH_NAME).value();	
+			}
+			
+			LOGGER.info(String.format("Check for latest revision: ProjectId = '%s', Branch = '%s'", projectId, branchName));
 
-			if (files.length >= 1) {
-				File artifactFile = files[0];
-				String artifactFileName = artifactFile.getName();
-				String versionString = artifactFileName.substring(artifactFileName.indexOf("-"));				
-				String fileName = artifactPath + "./" + artifactFile.getName();
-				String revision = versionString;
-				String trackbackUrl = createArtifactRawUrl(project.getWebUrl(), lastestJob.getId(), fileName);
-				return new PackageRevisionMessage(revision, lastestJob.getFinishedAt(), lastestJob.getUser().getName(), "", trackbackUrl);
+			GitLabApi gitLabApi = createGitLabApi(repositoryConfiguration);
+			Job latestJob = getLatestSuccessfulJob(packageConfiguration, gitLabApi, projectId);
+
+			String revision = latestJob.getId().toString();
+			Date timestamp = latestJob.getCreatedAt();
+			String user = latestJob.getUser().getUsername();
+			String revisionComment = latestJob.getCommit().getMessage();
+			String trackbackUrl = gitLabApi.getProjectApi().getProject(projectId).getWebUrl();
+			String artifactLocationUrl = createArtifactLocationUrl(gitLabApi, latestJob, projectId);
+			
+			LOGGER.info(String.format("Create package revision message: Revision = '%s', Timestamp = '%s', User = '%s', Comment = '%s', TrackbackUrl = '%s'", 
+					revision,
+					timestamp,
+					user,
+					revisionComment,
+					trackbackUrl
+					));
+
+			PackageRevisionMessage packageRevisionMessage = new PackageRevisionMessage(revision, timestamp, user, revisionComment, trackbackUrl);
+			packageRevisionMessage.addData(Constants.PACKAGE_LOCATION, artifactLocationUrl);
+			
+			if (branchName == null || branchName.isEmpty()) {
+				LOGGER.info("no branch specified");
+				return packageRevisionMessage;
 			}
 
-			return null;
+			LOGGER.info(String.format("check branchName='%s' is equal to ref='%s'", branchName.toLowerCase(), latestJob.getRef().toLowerCase()));
+			if (branchName.toLowerCase().equals(latestJob.getRef().toLowerCase())) {
+				return packageRevisionMessage;
+			}
+			
 		} catch (Exception e) {
-			return null;
+			LOGGER.error("ERROR to get latest revision", e);
 		}
-	}
-
-	public PackageRevisionMessage getLatestRevisionSince(PackageMaterialProperties packageConfiguration, PackageMaterialProperties repositoryConfiguration,
-			PackageRevisionMessage previousPackageRevision) {
+		
 		return null;
 	}
-	
-	private static String createArtifactRawUrl(String projectUrl, Integer jobId, String artifactsPath)
-	{
-		String url = projectUrl + "-/jobs/" + jobId + "/artifacts/file/" + artifactsPath;
+
+	public PackageRevisionMessage getLatestRevisionSince(PackageMaterialProperties packageConfiguration, PackageMaterialProperties repositoryConfiguration, PackageRevisionMessage previousPackageRevision) {
+		LOGGER.info("getLatestRevisionSince REPO: " + toJsonString(repositoryConfiguration) + "\n PACK: " + toJsonString(repositoryConfiguration));
+		
+		PackageRevisionMessage prm = getLatestRevision(packageConfiguration, repositoryConfiguration);
+		if (prm.getTimestamp().after(previousPackageRevision.getTimestamp())) {
+			return prm;
+		}
+		
+		return null;
+	}
+
+	private GitLabApi createGitLabApi(PackageMaterialProperties repositoryConfiguration) {
+		GitLabApi gitLabApi = new GitLabApi(repositoryConfiguration.getProperty(Constants.GITLAB_SERVERURL).value(), repositoryConfiguration.getProperty(Constants.ACCESS_TOKEN).value());
+		return gitLabApi;
+	}
+
+	private Job getLatestSuccessfulJob(PackageMaterialProperties packageConfiguration, GitLabApi gitLabApi, Integer projectId) throws GitLabApiException {
+		LOGGER.info("getLatestSuccessfulJob: " + projectId);
+		
+		List<Job> jobs = gitLabApi.getJobApi().getJobs(projectId, JobScope.SUCCESS);
+		Job lastestJob = jobs.get(0);
+		return lastestJob;
+	}
+
+	private String createArtifactLocationUrl(GitLabApi gitLabApi, Job job, Integer projectId) throws GitLabApiException {
+		String url = gitLabApi.getProjectApi().getProject(projectId).getWebUrl() + "/-/jobs/" + job.getId() + "/artifacts/download";
 		return url;
 	}
 }

@@ -7,24 +7,24 @@ public class PackageMaterialProperty {
 
     @Expose
     private String value;
+    
+    @Expose
+    @SerializedName("display-order")
+    private String displayOrder;    
+    
+    @Expose
+    @SerializedName("display-name")
+    private String displayName;
+    
+    @Expose
+    @SerializedName("part-of-identity")
+    private Boolean partOfIdentity;    
 
     @Expose
     private Boolean secure;
 
     @Expose
-    @SerializedName("part-of-identity")
-    private Boolean partOfIdentity;
-
     private Boolean required;
-
-    @Expose
-    @SerializedName("display-name")
-    private String displayName;
-
-    @Expose
-    @SerializedName("display-order")
-    private String displayOrder;
-
 
     public PackageMaterialProperty withSecure(Boolean secure) {
         this.secure = secure;

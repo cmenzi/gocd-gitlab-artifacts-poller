@@ -3,6 +3,7 @@ package ch.crip.gocd;
 import com.thoughtworks.go.plugin.api.AbstractGoPlugin;
 import com.thoughtworks.go.plugin.api.GoPluginIdentifier;
 import com.thoughtworks.go.plugin.api.annotation.Extension;
+import com.thoughtworks.go.plugin.api.logging.Logger;
 import com.thoughtworks.go.plugin.api.request.GoPluginApiRequest;
 import com.thoughtworks.go.plugin.api.response.DefaultGoPluginApiResponse;
 import com.thoughtworks.go.plugin.api.response.GoPluginApiResponse;
@@ -28,6 +29,8 @@ import static java.util.Arrays.asList;;
 @Extension
 public class PackageRepositoryMaterial extends AbstractGoPlugin {
 
+	private static final Logger LOGGER = Logger.getLoggerFor(PackageRepositoryMaterial.class);
+	
     public static final String EXTENSION = "package-repository";
     public static final String REQUEST_REPOSITORY_CONFIGURATION = "repository-configuration";
     public static final String REQUEST_PACKAGE_CONFIGURATION = "package-configuration";
@@ -38,13 +41,14 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
     public static final String REQUEST_LATEST_PACKAGE_REVISION = "latest-revision";
     public static final String REQUEST_LATEST_PACKAGE_REVISION_SINCE = "latest-revision-since";
 
-    private Map<String, MessageHandler> handlerMap = new LinkedHashMap<String, MessageHandler>();
-    private PackageRepositoryConfigurationProvider configurationProvider;
+    private final Map<String, MessageHandler> handlerMap = new LinkedHashMap<String, MessageHandler>();
+    private final PackageRepositoryConfigurationProvider configurationProvider;
     private final PackageRepositoryPoller packageRepositoryPoller;
 
     public PackageRepositoryMaterial() {
         configurationProvider = new PackageRepositoryConfigurationProvider();
         packageRepositoryPoller = new PackageRepositoryPoller(configurationProvider);
+        
         handlerMap.put(REQUEST_REPOSITORY_CONFIGURATION, repositoryConfigurationsMessageHandler());
         handlerMap.put(REQUEST_PACKAGE_CONFIGURATION, packageConfigurationMessageHandler());
         handlerMap.put(REQUEST_VALIDATE_REPOSITORY_CONFIGURATION, validateRepositoryConfigurationMessageHandler());
@@ -55,10 +59,11 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         handlerMap.put(REQUEST_LATEST_PACKAGE_REVISION_SINCE, latestRevisionSinceMessageHandler());
     }
 
-
     public GoPluginApiResponse handle(GoPluginApiRequest goPluginApiRequest) {
         try {
+        	LOGGER.info("handle: " + goPluginApiRequest.requestName());
             if (handlerMap.containsKey(goPluginApiRequest.requestName())) {
+            	LOGGER.info("handler exists: " + goPluginApiRequest.requestName());
                 return handlerMap.get(goPluginApiRequest.requestName()).handle(goPluginApiRequest);
             }
             return DefaultGoPluginApiResponse.badRequest(String.format("Invalid request name %s", goPluginApiRequest.requestName()));
@@ -74,6 +79,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
     MessageHandler packageConfigurationMessageHandler() {
         return new MessageHandler() {
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler packageConfigurationMessageHandler: " + request.requestName());
                 return success(toJsonString(configurationProvider.packageConfiguration().getPropertyMap()));
             }
         };
@@ -83,6 +89,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
     MessageHandler repositoryConfigurationsMessageHandler() {
         return new MessageHandler() {
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler repositoryConfigurationsMessageHandler: " + request.requestName());
                 return success(toJsonString(configurationProvider.repositoryConfiguration().getPropertyMap()));
             }
         };
@@ -91,7 +98,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
     MessageHandler validateRepositoryConfigurationMessageHandler() {
         return new MessageHandler() {
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
-
+            	LOGGER.info("handler validateRepositoryConfigurationMessageHandler: " + request.requestName());
                 ValidateRepositoryConfigurationMessage message = fromJsonString(request.requestBody(), ValidateRepositoryConfigurationMessage.class);
                 ValidationResultMessage validationResultMessage = configurationProvider.validateRepositoryConfiguration(message.getRepositoryConfiguration());
                 if (validationResultMessage.failure()) {
@@ -106,6 +113,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         return new MessageHandler() {
             @Override
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler validatePackageConfigurationMessageHandler: " + request.requestName());
                 ValidatePackageConfigurationMessage message = fromJsonString(request.requestBody(), ValidatePackageConfigurationMessage.class);
                 ValidationResultMessage validationResultMessage = configurationProvider.validatePackageConfiguration(message.getPackageConfiguration());
                 if (validationResultMessage.failure()) {
@@ -120,6 +128,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         return new MessageHandler() {
             @Override
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler checkRepositoryConnectionMessageHandler: " + request.requestName());
                 RepositoryConnectionMessage message = fromJsonString(request.requestBody(), RepositoryConnectionMessage.class);
                 CheckConnectionResultMessage result = packageRepositoryPoller.checkConnectionToRepository(message.getRepositoryConfiguration());
                 return success(toJsonString(result));
@@ -131,6 +140,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         return new MessageHandler() {
             @Override
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler checkPackageConnectionMessageHandler: " + request.requestName());
                 PackageConnectionMessage message = fromJsonString(request.requestBody(), PackageConnectionMessage.class);
                 CheckConnectionResultMessage result = packageRepositoryPoller.checkConnectionToPackage(message.getPackageConfiguration(), message.getRepositoryConfiguration());
                 return success(toJsonString(result));
@@ -142,6 +152,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         return new MessageHandler() {
             @Override
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler latestRevisionMessageHandler: " + request.requestName());
                 LatestPackageRevisionMessage message = fromJsonString(request.requestBody(), LatestPackageRevisionMessage.class);
                 PackageRevisionMessage revision = packageRepositoryPoller.getLatestRevision(message.getPackageConfiguration(), message.getRepositoryConfiguration());
                 return success(toJsonString(revision));
@@ -153,6 +164,7 @@ public class PackageRepositoryMaterial extends AbstractGoPlugin {
         return new MessageHandler() {
             @Override
             public GoPluginApiResponse handle(GoPluginApiRequest request) {
+            	LOGGER.info("handler latestRevisionSinceMessageHandler: " + request.requestName());
                 LatestPackageRevisionSinceMessage message = fromJsonString(request.requestBody(), LatestPackageRevisionSinceMessage.class);
                 PackageRevisionMessage revision = packageRepositoryPoller.getLatestRevisionSince(message.getPackageConfiguration(), message.getRepositoryConfiguration(), message.getPreviousRevision());
                 return success(revision == null ? null : toJsonString(revision));
