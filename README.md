@@ -1,5 +1,13 @@
 # GoCD - GitLab Artifacts Poller Plugin
 
+## Build Status
+
+| Branch        | Status        |
+| ------------- |:-------------:|
+| master      | [![Build Status](https://travis-ci.org/cmenzi/gocd-gitlab-artifacts-poller.svg?branch=master)](https://travis-ci.org/cmenzi/gocd-gitlab-artifacts-poller) |
+
+
+
 ## Requirements
 These plugins require GoCD version v17.x or above.
 
