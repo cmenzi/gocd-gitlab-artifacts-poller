@@ -6,6 +6,7 @@ deploy:
   provider: releases
   api_key:
     secure: movR7XGYWFoLrdUSuCYvfeUACFsMdMT1hWCt0RGwdK8nxa+uRhxfmNGDdNLmu8rDppVCNpRtJbEL8cpnxNItBpxFgRW7+7At+jsl7AwsXNwLlg0mWdL1Pr2vzlMGfwo/jNT3prT7EYCEn9WS7LhYWf/M1aoIsFbQQMXwLvY01aAFBl+Ua6I0Nw7Ed4Xy/gjdtTgRtxOD/eaUnCpQ8Xxb0eaVdRBXbzFU1nvcoAAaRnjmoDp2tr5TfSasbNtllG3fpwJUKryM5o5416+USZjxlObczyM/+/io/CsNICWa0AJMphPYNEf6/e5t11G9sGoYIHKL6vvjxRVgcFylW9tJpoTmLjI8azslxSi6a7d2a2jTdWhoQYsoLqTQ0C4uED8wLv8l+gKu8BnLq5YEtiYteFQoJy57q/vFbzpNalt6Tz0g8Dr4tniwERGOcSLez0rmBj/iZrE0004qusgwmMwzelnHL1Ntx7VGflmiP8O21vyqSeHa+tP9ydFrpiRFoxzjA8fgF11ZYVGjFwoseIn9IfepcSr4f+n7wNLGzBDhKexMevx9txDYu9E/7zIhYlK3INF+gv9tNpP6IiNf5Aoba9HrANfluBx8AdSFohrEmTqTypLKBaZ/+pna9fVwrS1ONcg22yivck1hvj8kUcAI7DVsIhyYeuMuFwzskbwzNTY=
-  file: target/go-plugins-dist/*
+  file_glob: true
+  file: "target/go-plugins-dist/gocd-gitlab-artifacts-poller-*.jar"
   on:
     repo: cmenzi/gocd-gitlab-artifacts-poller
