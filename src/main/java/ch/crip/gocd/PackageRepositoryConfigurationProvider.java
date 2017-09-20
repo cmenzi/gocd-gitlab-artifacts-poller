@@ -59,7 +59,7 @@ public class PackageRepositoryConfigurationProvider {
 				.withSecure(false)
 				.withRequired(false)
 				.withValue("")
-				.withDisplayName("Branch to include")
+				.withDisplayName("Branch")
 				.withDisplayOrder("1");
 	}
 	

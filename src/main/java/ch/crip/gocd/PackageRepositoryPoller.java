@@ -86,6 +86,8 @@ public class PackageRepositoryPoller {
 			String revisionComment = latestJob.getCommit().getMessage();
 			String trackbackUrl = gitLabApi.getProjectApi().getProject(projectId).getWebUrl();
 			String artifactLocationUrl = createArtifactLocationUrl(gitLabApi, latestJob, projectId);
+			String artifactBranch = latestJob.getRef();
+			String artifactCommit = latestJob.getCommit().getId();
 			
 			LOGGER.info(String.format("Create package revision message: Revision = '%s', Timestamp = '%s', User = '%s', Comment = '%s', TrackbackUrl = '%s'", 
 					revision,
@@ -97,6 +99,8 @@ public class PackageRepositoryPoller {
 
 			PackageRevisionMessage packageRevisionMessage = new PackageRevisionMessage(revision, timestamp, user, revisionComment, trackbackUrl);
 			packageRevisionMessage.addData(Constants.PACKAGE_LOCATION, artifactLocationUrl);
+			packageRevisionMessage.addData(Constants.PACKAGE_BRANCH, artifactBranch);
+			packageRevisionMessage.addData(Constants.PACKAGE_COMMIT, artifactCommit);
 			
 			if (branchName == null || branchName.isEmpty()) {
 				LOGGER.info("no branch specified");

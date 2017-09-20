@@ -8,4 +8,6 @@ public class Constants {
     public static final String BRANCH_NAME = "BRANCH_NAME";
     
     public static String PACKAGE_LOCATION = "LOCATION";
+    public static String PACKAGE_BRANCH = "BRANCH";
+    public static String PACKAGE_COMMIT = "COMMIT";
 }
